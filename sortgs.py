@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from time import sleep
 import warnings
-import os
 
 # Solve conflict between raw_input and input on Python 2 and Python 3
 import sys
@@ -31,7 +30,7 @@ if sys.version[0]=="3": raw_input=input
 # Default Parameters
 KEYWORD = 'machine learning' # Default argument if command line is empty
 NRESULTS = 100 # Fetch 100 articles
-CSVPATH = os.getcwd() # Current folder as default path
+CSVPATH = '.' # Current folder
 SAVECSV = True
 SORTBY = 'Citations'
 PLOT_RESULTS = False
@@ -54,7 +53,7 @@ ROBOT_KW=['unusual traffic from your computer network', 'not a robot']
 def get_command_line_args():
     # Command line arguments
     parser = argparse.ArgumentParser(description='Arguments')
-    parser.add_argument('kw', type=str, help="""Keyword to be searched. Use double quote followed by simple quote to search for an exact keyword. Example: "'exact keyword'" """, default=KEYWORD)
+    parser.add_argument('--kw', type=str, help="""Keyword to be searched. Use double quote followed by simple quote to search for an exact keyword. Example: "'exact keyword'" """)
     parser.add_argument('--sortby', type=str, help='Column to be sorted by. Default is by the columns "Citations", i.e., it will be sorted by the number of citations. If you want to sort by citations per year, use --sortby "cit/year"')
     parser.add_argument('--nresults', type=int, help='Number of articles to search on Google Scholar. Default is 100. (carefull with robot checking if value is too high)')
     parser.add_argument('--csvpath', type=str, help='Path to save the exported csv file. By default it is the current folder')
@@ -66,11 +65,6 @@ def get_command_line_args():
 
     # Parse and read arguments and assign them to variables if exists
     args, _ = parser.parse_known_args()
-
-    # Check if no arguments were provided and print help if so
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(0)
 
     keyword = KEYWORD
     if args.kw:
@@ -141,7 +135,7 @@ def setup_driver():
     print('Loading...')
     chrome_options = Options()
     chrome_options.add_argument("disable-infobars")
-    driver = webdriver.Chrome(chrome_options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
     return driver
 
 def get_author(content):
@@ -185,9 +179,6 @@ def get_content_with_selenium(url):
 def main():
     # Get command line arguments
     keyword, number_of_results, save_database, path, sortby_column, plot_results, start_year, end_year, debug = get_command_line_args()
-
-    print("Running with the following parameters:")
-    print(f"Keyword: {keyword}, Number of results: {number_of_results}, Save database: {save_database}, Path: {path}, Sort by: {sortby_column}, Plot results: {plot_results}, Start year: {start_year}, End year: {end_year}, Debug: {debug}")
 
     # Create main URL based on command line arguments
     if start_year:
@@ -289,8 +280,8 @@ def main():
                         columns=['Author', 'Title', 'Citations', 'Year', 'Publisher', 'Venue', 'Source'])
     data.index.name = 'Rank'
 
-    # Avoid years that are higher than the current year by clipping it to end_year
-    data['cit/year']=data['Citations']/(end_year + 1 - data['Year'].clip(upper=end_year))
+    # Add columns with number of citations per year
+    data['cit/year']=data['Citations']/(end_year + 1 - data['Year'])
     data['cit/year']=data['cit/year'].round(0).astype(int)
 
     # Sort by the selected columns, if exists
@@ -317,7 +308,6 @@ def main():
         fpath_csv = os.path.join(path,keyword.replace(' ','_')+'.csv')
         fpath_csv = fpath_csv[:MAX_CSV_FNAME]
         data_ranked.to_csv(fpath_csv, encoding='utf-8')
-        print('Results saved to', fpath_csv)
 
 if __name__ == '__main__':
         main()
